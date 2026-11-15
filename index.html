@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="kk" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Контактілерді Басқару Жүйесі</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Динамикалық шрифт өлшемін басқаруға арналған сыныптар */
+        body.font-sm { font-size: 13px; }
+        body.font-md { font-size: 15px; }
+        body.font-lg { font-size: 18px; }
+        body.font-xl { font-size: 21px; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-800 dark:text-slate-100 font-md transition-all duration-200" id="main-body">
+
+    <!-- Хабарлама терезесі (Toast Notification) -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full opacity-0 transition-all duration-300 max-w-sm bg-rose-600 text-white px-5 py-3 rounded-2xl shadow-lg flex items-center gap-3">
+        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+        <div>
+            <h4 class="font-bold text-sm" id="toast-title">Қателік!</h4>
+            <p id="toast-message" class="text-xs text-rose-100"></p>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <!-- Тақырып және Басқару панелі (Шрифт және Тема) -->
+        <header class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+            <div>
+                <h1 class="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mb-1">
+                    <i class="fa-solid fa-address-book mr-2"></i>Контактілер Жүйесі
+                </h1>
+                <p class="text-slate-500 dark:text-slate-400 text-sm">Нөмірлерді жинау, реттеу және сұрыптау алаңы</p>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Қараңғы / Жарық режимін ауыстыру батырмасы -->
+                <button onclick="toggleTheme()" 
+                    class="h-10 px-4 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-2xl transition shadow-sm gap-2" title="Теманы ауыстыру">
+                    <i id="theme-icon" class="fa-solid fa-moon text-indigo-500"></i>
+                    <span id="theme-text" class="text-xs font-medium">Қараңғы</span>
+                </button>
+
+                <!-- Шрифтті басқару батырмалары -->
+                <div class="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 rounded-2xl shadow-sm">
+                    <span class="text-xs text-slate-500 dark:text-slate-400 ml-1 mr-1"><i class="fa-solid fa-text-height mr-1"></i></span>
+                    <button onclick="changeFontSize('decrease')" 
+                        class="w-7 h-7 flex items-center justify-center bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition font-bold" title="Кішірейту (-)">
+                        <i class="fa-solid fa-minus text-xs"></i>
+                    </button>
+                    <button onclick="changeFontSize('increase')" 
+                        class="w-7 h-7 flex items-center justify-center bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition font-bold" title="Үлкейту (+)">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Негізгі Контейнер -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Форма бөлігі (Енгізу / Сақтау және VCF жүктеу) -->
+            <div class="space-y-6 md:col-span-1">
+                <!-- Жаңа контакт қосу форматы -->
+                <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 h-fit">
+                    <h2 id="form-title" class="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-200 flex items-center">
+                        <i class="fa-solid fa-user-plus mr-2 text-indigo-600 dark:text-indigo-400"></i>Жаңа контакт
+                    </h2>
+                    
+                    <form id="contact-form" class="space-y-4">
+                        <input type="hidden" id="edit-id" value="">
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Аты-жөні:</label>
+                            <input type="text" id="name" required placeholder="Қосан Нұрқожаұлы"
+                                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Телефон нөмірі:</label>
+                            <input type="tel" id="phone" required placeholder="+7 747 559 3416"
+                                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+
+                        <div class="flex gap-2 pt-2">
+                            <button type="submit" id="submit-btn" 
+                                class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 px-4 rounded-xl transition duration-200 shadow-sm">
+                                Енгізу
+                            </button>
+                            <button type="button" id="cancel-btn" onclick="resetForm()" 
+                                class="hidden bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium py-2.5 px-3 rounded-xl transition duration-200">
+                                Болдырмау
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- WhatsApp VCF файл жүктеу бөлімі -->
+                <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
+                    <h3 class="text-lg font-semibold mb-2 text-slate-800 dark:text-slate-200 flex items-center">
+                        <i class="fa-brands fa-whatsapp mr-2 text-emerald-500 text-xl"></i>VCF файл жүктеу
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">WhatsApp-тан келген .vcf контакт файлын таңдаңыз немесе жүктеңіз.</p>
+                    
+                    <label class="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-2xl p-5 cursor-pointer bg-slate-50 dark:bg-slate-950 transition">
+                        <i class="fa-solid fa-cloud-arrow-up text-2xl text-indigo-500 mb-2"></i>
+                        <span class="text-xs font-medium text-slate-700 dark:text-slate-300 text-center">VCF файлды таңдау</span>
+                        <input type="file" id="vcf-file-input" accept=".vcf" class="hidden" onchange="handleVcfUpload(event)">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Тізім және Басқару бөлігі -->
+            <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 md:col-span-2">
+                
+                <!-- Басқару панелі (Іздеу және Сұрыптау) -->
+                <div class="flex flex-col sm:flex-row gap-3 mb-6 justify-between items-center">
+                    <!-- Іздеу жолағы -->
+                    <div class="w-full sm:w-auto flex-1 relative">
+                        <i class="fa-solid fa-search absolute left-3.5 top-3.5 text-slate-400"></i>
+                        <input type="text" id="search-input" oninput="renderContacts()" placeholder="Іздеу (аты немесе нөмір)..."
+                            class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- Сортировка батырмалары -->
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button onclick="sortBy('name')" id="sort-name-btn"
+                            class="flex-1 sm:flex-none px-3 py-2.5 font-semibold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900 transition flex items-center justify-center gap-1.5 text-sm">
+                            <i class="fa-solid fa-sort-alphabetical-down"></i>Аты бойынша
+                        </button>
+                        <button onclick="sortBy('phone')" id="sort-phone-btn"
+                            class="flex-1 sm:flex-none px-3 py-2.5 font-semibold bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center gap-1.5 text-sm">
+                            <i class="fa-solid fa-phone"></i>Номер бойынша
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Кесте (Тік скролл қосылған блок: max-height және overflow-y-auto) -->
+                <div class="max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="sticky top-0 bg-white dark:bg-slate-900 z-10 shadow-sm">
+                            <tr class="border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase text-xs tracking-wider">
+                                <th class="py-3 px-3">№</th>
+                                <th class="py-3 px-3">Аты-жөні</th>
+                                <th class="py-3 px-3">Телефон</th>
+                                <th class="py-3 px-3 text-right">Әрекеттер</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contact-list" class="divide-y divide-slate-100 dark:divide-slate-800/60">
+                            <!-- Динамикалық контактілер -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Бос орын хабарламасы -->
+                <div id="empty-state" class="hidden text-center py-12 text-slate-400">
+                    <i class="fa-solid fa-folder-open text-4xl mb-3"></i>
+                    <p>Әзірге контактілер тізімі бос.</p>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript Логикасы -->
+    <script>
+        let contacts = JSON.parse(localStorage.getItem('contacts')) || [];
+        
+        // Барлық нөмірлерді автоматты түрде ашып форматтау
+        contacts = contacts.map((c, i) => ({
+            id: c.id || Date.now() + i,
+            name: c.name,
+            phone: formatPhoneNumber(c.phone)
+        }));
+
+        let currentSort = 'name';
+        let sortDirection = 1;
+        
+        // Шрифт өлшемін басқару
+        let fontSizes = ['font-sm', 'font-md', 'font-lg', 'font-xl'];
+        let currentFontIndex = parseInt(localStorage.getItem('fontIndex')) || 1;
+        applyFontSize();
+
+        // Теманы орнату (Жарық / Қараңғы)
+        let currentTheme = localStorage.getItem('theme') || 'dark';
+        applyTheme();
+
+        const form = document.getElementById('contact-form');
+        const nameInput = document.getElementById('name');
+        const phoneInput = document.getElementById('phone');
+        const editIdInput = document.getElementById('edit-id');
+        const submitBtn = document.getElementById('submit-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const formTitle = document.getElementById('form-title');
+        const contactList = document.getElementById('contact-list');
+        const emptyState = document.getElementById('empty-state');
+        const toast = document.getElementById('toast');
+        const toastTitle = document.getElementById('toast-title');
+        const toastMessage = document.getElementById('toast-message');
+
+        function showToast(message, isSuccess = false) {
+            toast.className = `fixed top-5 right-5 z-50 transform transition-all duration-300 max-w-sm text-white px-5 py-3 rounded-2xl shadow-lg flex items-center gap-3 ${isSuccess ? 'bg-emerald-600' : 'bg-rose-600'}`;
+            toastTitle.innerText = isSuccess ? 'Сәтті!' : 'Қателік!';
+            toastMessage.innerText = message;
+            
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            toast.classList.add('translate-x-0', 'opacity-100');
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-x-0', 'opacity-100');
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3500);
+        }
+
+        function toggleTheme() {
+            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', currentTheme);
+            applyTheme();
+        }
+
+        function applyTheme() {
+            const html = document.documentElement;
+            const themeIcon = document.getElementById('theme-icon');
+            const themeText = document.getElementById('theme-text');
+
+            if (currentTheme === 'dark') {
+                html.classList.add('dark');
+                themeIcon.className = "fa-solid fa-moon text-indigo-400";
+                themeText.innerText = "Қараңғы";
+            } else {
+                html.classList.remove('dark');
+                themeIcon.className = "fa-solid fa-sun text-amber-500";
+                themeText.innerText = "Жарық";
+            }
+        }
+
+        function changeFontSize(action) {
+            if (action === 'increase' && currentFontIndex < fontSizes.length - 1) {
+                currentFontIndex++;
+            } else if (action === 'decrease' && currentFontIndex > 0) {
+                currentFontIndex--;
+            }
+            localStorage.setItem('fontIndex', currentFontIndex);
+            applyFontSize();
+        }
+
+        function applyFontSize() {
+            const body = document.getElementById('main-body');
+            fontSizes.forEach(cls => body.classList.remove(cls));
+            body.classList.add(fontSizes[currentFontIndex]);
+        }
+
+        // Телефон нөмірін "+7 747 559 3416" форматына келтіру функциясы
+        function formatPhoneNumber(phone) {
+            let cleaned = phone.replace(/\D/g, '');
+            if (cleaned.startsWith('8') && cleaned.length === 11) {
+                cleaned = '7' + cleaned.substring(1);
+            }
+            if (cleaned.startsWith('7') && cleaned.length === 11) {
+                return `+7 ${cleaned.substring(1, 4)} ${cleaned.substring(4, 7)} ${cleaned.substring(7, 9)}${cleaned.substring(9, 11)}`;
+            } else if (cleaned.length === 10) {
+                return `+7 ${cleaned.substring(0, 3)} ${cleaned.substring(3, 6)} ${cleaned.substring(6, 8)}${cleaned.substring(8, 10)}`;
+            }
+            return phone; // Егер басқа формат болса өзгеріссіз қалдыру
+        }
+
+        // Нөмірді тазарту (тек цифрларын қалдыру)
+        function cleanPhone(phone) {
+            return phone.replace(/\D/g, '');
+        }
+
+        // WhatsApp-қа тікелей сілтеме жасау (wa.me/...)
+        function openWhatsApp(phone) {
+            let cleaned = cleanPhone(phone);
+            if (cleaned.startsWith('8') && cleaned.length === 11) {
+                cleaned = '7' + cleaned.substring(1);
+            }
+            window.open(`https://wa.me/${cleaned}`, '_blank');
+        }
+
+        // Telegram-ға тікелей сілтеме жасау (t.me/...)
+        function openTelegram(phone) {
+            let cleaned = cleanPhone(phone);
+            if (cleaned.startsWith('8') && cleaned.length === 11) {
+                cleaned = '7' + cleaned.substring(1);
+            }
+            window.open(`https://t.me/+${cleaned}`, '_blank');
+        }
+
+        // VCF файлын оқу және өңдеу логикасы
+        function handleVcfUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                parseVCard(text);
+                event.target.value = '';
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function parseVCard(vcfText) {
+            const lines = vcfText.split(/\r?\n/);
+            let currentName = '';
+            let currentPhone = '';
+            let addedCount = 0;
+            let duplicateCount = 0;
+
+            for (let line of lines) {
+                line = line.trim();
+
+                if (line.startsWith('FN:')) {
+                    currentName = decodeVCardText(line.substring(3).trim());
+                } else if (line.startsWith('N:') && !currentName) {
+                    const parts = line.substring(2).split(';');
+                    const nameParts = parts.reverse().filter(p => p.trim() !== '');
+                    currentName = decodeVCardText(nameParts.join(' '));
+                }
+
+                if (line.startsWith('TEL')) {
+                    const colonIdx = line.indexOf(':');
+                    if (colonIdx !== -1) {
+                        currentPhone = formatPhoneNumber(line.substring(colonIdx + 1).trim());
+                    }
+                }
+
+                if (line === 'END:VCARD') {
+                    if (currentName && currentPhone) {
+                        const cleanedNewPhone = cleanPhone(currentPhone);
+                        const exists = contacts.some(c => cleanPhone(c.phone) === cleanedNewPhone);
+                        
+                        if (!exists) {
+                            contacts.push({
+                                id: Date.now() + Math.random(),
+                                name: currentName,
+                                phone: currentPhone
+                            });
+                            addedCount++;
+                        } else {
+                            duplicateCount++;
+                        }
+                    }
+                    currentName = '';
+                    currentPhone = '';
+                }
+            }
+
+            if (addedCount > 0 || duplicateCount > 0) {
+                saveAndRender();
+                showToast(`Сәтті қосылды: ${addedCount} контакт. (Қайталанғандар: ${duplicateCount})`, true);
+            } else {
+                showToast('Файылдан жарамды контактілер табылмады!');
+            }
+        }
+
+        function decodeVCardText(str) {
+            try {
+                str = str.replace(/=([A-F0-9]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16)));
+                return str.replace(/;/g, ' ').trim();
+            } catch (err) {
+                return str;
+            }
+        }
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = nameInput.value.trim();
+            const rawPhone = phoneInput.value.trim();
+            const formattedPhone = formatPhoneNumber(rawPhone);
+            const editId = editIdInput.value;
+            const cleanedNewPhone = cleanPhone(formattedPhone);
+
+            const existingContact = contacts.find(c => {
+                if (editId && c.id == editId) return false;
+                return cleanPhone(c.phone) === cleanedNewPhone;
+            });
+
+            if (existingContact) {
+                showToast(`Бұл телефон нөмірі жүйеге бұрын сақталған! (${existingContact.name}: ${existingContact.phone})`, false);
+                return;
+            }
+
+            if (!editId) {
+                contacts.push({ id: Date.now(), name, phone: formattedPhone });
+            } else {
+                const index = contacts.findIndex(c => c.id == editId);
+                if (index !== -1) {
+                    contacts[index].name = name;
+                    contacts[index].phone = formattedPhone;
+                }
+            }
+
+            saveAndRender();
+            resetForm();
+            showToast('Контакт сәтті сақталды!', true);
+        });
+
+        function saveAndRender() {
+            localStorage.setItem('contacts', JSON.stringify(contacts));
+            renderContacts();
+        }
+
+        function renderContacts() {
+            const searchQuery = document.getElementById('search-input').value.toLowerCase();
+            
+            let filteredContacts = contacts.filter(contact => 
+                contact.name.toLowerCase().includes(searchQuery) || 
+                contact.phone.includes(searchQuery)
+            );
+
+            filteredContacts.sort((a, b) => {
+                if (currentSort === 'name') {
+                    return a.name.localeCompare(b.name) * sortDirection;
+                } else if (currentSort === 'phone') {
+                    return a.phone.localeCompare(b.phone) * sortDirection;
+                }
+            });
+
+            contactList.innerHTML = '';
+
+            if (filteredContacts.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filteredContacts.forEach((contact, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/40 transition';
+                
+                tr.innerHTML = `
+                    <td class="py-3.5 px-3 text-slate-400">${index + 1}</td>
+                    <td class="py-3.5 px-3 font-medium text-slate-800 dark:text-slate-200">${escapeHtml(contact.name)}</td>
+                    <td class="py-3.5 px-3 text-slate-600 dark:text-slate-300">${escapeHtml(contact.phone)}</td>
+                    <td class="py-3.5 px-3 text-right space-x-2">
+                        <button type="button" onclick="openWhatsApp('${escapeHtml(contact.phone)}')" class="text-emerald-500 hover:text-emerald-600 p-1.5 transition" title="WhatsApp-қа жазу">
+                            <i class="fa-brands fa-whatsapp text-base"></i>
+                        </button>
+                        <button type="button" onclick="openTelegram('${escapeHtml(contact.phone)}')" class="text-sky-500 hover:text-sky-600 p-1.5 transition" title="Telegram-ға жазу">
+                            <i class="fa-brands fa-telegram text-base"></i>
+                        </button>
+                        <button type="button" onclick="editContact(${contact.id})" class="text-amber-500 hover:text-amber-600 p-1.5 transition" title="Өзгерту">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button type="button" onclick="deleteContact(${contact.id})" class="text-rose-500 hover:text-rose-600 p-1.5 transition" title="Жою">
+							<i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+                contactList.appendChild(tr);
+            });
+        }
+
+        function sortBy(type) {
+            if (currentSort === type) {
+                sortDirection *= -1;
+            } else {
+                currentSort = type;
+                sortDirection = 1;
+            }
+
+            const sortNameBtn = document.getElementById('sort-name-btn');
+            const sortPhoneBtn = document.getElementById('sort-phone-btn');
+
+            if (currentSort === 'name') {
+                sortNameBtn.className = "flex-1 sm:flex-none px-3 py-2.5 font-semibold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900 transition flex items-center justify-center gap-1.5 text-sm";
+                sortPhoneBtn.className = "flex-1 sm:flex-none px-3 py-2.5 font-semibold bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center gap-1.5 text-sm";
+            } else {
+                sortPhoneBtn.className = "flex-1 sm:flex-none px-3 py-2.5 font-semibold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900 transition flex items-center justify-center gap-1.5 text-sm";
+                sortNameBtn.className = "flex-1 sm:flex-none px-3 py-2.5 font-semibold bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center gap-1.5 text-sm";
+            }
+
+            renderContacts();
+        }
+
+        function editContact(id) {
+            const contact = contacts.find(c => c.id == id);
+            if (!contact) return;
+
+            nameInput.value = contact.name;
+            phoneInput.value = contact.phone;
+            editIdInput.value = contact.id;
+
+            formTitle.innerHTML = `<i class="fa-solid fa-user-pen mr-2 text-amber-500"></i>Контактіні өзгерту`;
+            submitBtn.innerText = "Сақтау";
+            submitBtn.className = "flex-1 bg-amber-600 hover:bg-amber-500 text-white font-medium py-2.5 px-4 rounded-xl transition duration-200 shadow-sm";
+            cancelBtn.classList.remove('hidden');
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteContact(id) {
+            if (confirm("Бұл контактіні жоюды қалайсыз ба?")) {
+                contacts = contacts.filter(c => c.id != id);
+                saveAndRender();
+                showToast('Контакт жойылды!', true);
+            }
+        }
+
+        function resetForm() {
+            form.reset();
+            editIdInput.value = "";
+            formTitle.innerHTML = `<i class="fa-solid fa-user-plus mr-2 text-indigo-600 dark:text-indigo-400"></i>Жаңа контакт`;
+            submitBtn.innerText = "Енгізу";
+            submitBtn.className = "flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 px-4 rounded-xl transition duration-200 shadow-sm";
+            cancelBtn.classList.add('hidden');
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        renderContacts();
+    </script>
+</body>
+</html>
